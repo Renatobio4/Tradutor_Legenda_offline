@@ -60,21 +60,24 @@ def main():
     for root, dirs, files in os.walk(current_dir):
         for file_name in files:
             # Verifique se o arquivo corresponde aos critérios
-            if (file_name.endswith('.srt') or file_name.endswith('.eng.srt') or file_name.endswith('_eng.srt')) and \
-            not (file_name.endswith('.pt-br.srt') or file_name.endswith('_pt-br.srt')):
+            if (file_name.endswith('.srt') or file_name.endswith('.en.srt') or file_name.endswith('_en.srt')) and \
+            not (file_name.endswith('.pt-br.srt') or file_name.endswith('_pt-br.srt') or file_name.endswith('PT.srt')):
                 file_path = os.path.join(root, file_name)
 
             # Substituições específicas para evitar sobreposições
                                 
-                if file_name.endswith('_eng.srt'):
-                    new_file_name = file_name.replace('_eng.srt', '_pt-br.srt')
+                if file_name.endswith('_en.srt'):
+                    new_file_name = file_name.replace('_en.srt', '_pt-br.srt')
+                    new_file_name = new_file_name.replace('.en', '')
                 
-                elif file_name.endswith('.eng.srt'):
-                    new_file_name = file_name.replace('.eng.srt', '.pt-br.srt')
+                elif file_name.endswith('.en.srt'):
+                    new_file_name = file_name.replace('.en.srt', '.pt-br.srt')
+                    new_file_name = new_file_name.replace('_en', '')
+
 
                 elif file_name.endswith('.srt'):
                     new_file_name = file_name.replace('.srt', '.pt-br.srt')
-                    new_file_name = new_file_name.replace('_en', '')
+                    new_file_name = new_file_name.replace('en', '')
           
                 new_file_path = os.path.join(root, new_file_name)
 

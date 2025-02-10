@@ -5,7 +5,6 @@ import torch
 from tqdm import tqdm
 
 def install_packages():
-    # Atualize o índice de pacotes e instale o pacote necessário
     package.update_package_index()
     available_packages = package.get_available_packages()
     package_to_install = next(
@@ -16,20 +15,22 @@ def install_packages():
     package_path = package_to_install.download()
     package.install_from_path(package_path)
 
+def configure_device():
+    if torch.cuda.is_available():
+        os.environ["ARGOS_DEVICE_TYPE"] = "cuda"
+        torch.cuda.set_per_process_memory_fraction(0.9)
+        return torch.device("cuda:0")
+    else:
+        os.environ["ARGOS_DEVICE_TYPE"] = "cpu"
+        user_input = input("GPU Nvidia não encontrada. Deseja continuar utilizando a CPU? (y/n): ")
+        if user_input.lower() != 'y':
+            print("Tradução cancelada pelo usuário.")
+            return None
+        return torch.device("cpu")
+
 def translate_line(line, translator, device):
     try:
-        # Configurar o dispositivo para utilizar a GPU Nvidia
-        os.environ["ARGOS_DEVICE_TYPE"] = "cuda" if torch.cuda.is_available() else "cpu"
-        
-        # Verifica se a GPU está disponível
-        if torch.cuda.is_available():
-            # Limita a utilização da memória da GPU
-            torch.cuda.set_per_process_memory_fraction(0.9)
-        else:
-            raise RuntimeError("GPU Nvidia não encontrada. Certifique-se de que os drivers da Nvidia estão instalados corretamente.")
-        
-        # Traduzir usando o dispositivo
-        with torch.cuda.device(device):
+        with torch.cuda.device(device) if device.type == "cuda" else torch.device("cpu"):
             return translator.translate(line)
     except Exception as e:
         print(f"Error translating line: {line}. Error: {e}")
@@ -37,7 +38,6 @@ def translate_line(line, translator, device):
 
 def translate_srt(file_path, translator, device):
     translated_lines = []
-
     with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
         for line in tqdm(lines, desc="Translating lines"):
@@ -45,33 +45,37 @@ def translate_srt(file_path, translator, device):
                 translated_lines.append(line)
             else:
                 translated_lines.append(translate_line(line, translator, device) + '\n')
-
     return translated_lines
 
 def main():
     print("Iniciando o processo de tradução...")
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Instalar pacotes de tradução
     install_packages()
-    
     installed_languages = translate.get_installed_languages()
     translator = installed_languages[0].get_translation(installed_languages[1])
+    device = configure_device()
+    if device is None:
+        return
 
     for root, dirs, files in os.walk(current_dir):
         for file_name in files:
-            if (file_name.endswith('.srt') or file_name.endswith('eng.srt') or file_name.endswith('_eng.srt')) and \
+            # Verifique se o arquivo corresponde aos critérios
+            if (file_name.endswith('.srt') or file_name.endswith('.eng.srt') or file_name.endswith('_eng.srt')) and \
             not (file_name.endswith('.pt-br.srt') or file_name.endswith('_pt-br.srt')):
-                
                 file_path = os.path.join(root, file_name)
-                
-                if file_name.endswith('eng.srt'):
-                    new_file_name = file_name.replace('eng.srt', 'pt-br.srt')
-                elif file_name.endswith('_eng.srt'):
+
+            # Substituições específicas para evitar sobreposições
+                                
+                if file_name.endswith('_eng.srt'):
                     new_file_name = file_name.replace('_eng.srt', '_pt-br.srt')
-                else:
-                    new_file_name = file_name.replace('.srt', '.pt-br.srt')
                 
+                elif file_name.endswith('.eng.srt'):
+                    new_file_name = file_name.replace('.eng.srt', '.pt-br.srt')
+
+                elif file_name.endswith('.srt'):
+                    new_file_name = file_name.replace('.srt', '.pt-br.srt')
+                    new_file_name = new_file_name.replace('_en', '')
+          
                 new_file_path = os.path.join(root, new_file_name)
 
                 if os.path.exists(new_file_path):
@@ -82,16 +86,6 @@ def main():
 
                 start_time = time.time()
                 try:
-                    # Verifica se a GPU está disponível antes de traduzir
-                    if torch.cuda.is_available():
-                        device = torch.device("cuda:0")
-                    else:
-                        user_input = input("GPU Nvidia não encontrada. Deseja continuar utilizando a CPU? (y/n): ")
-                        if user_input.lower() != 'y':
-                            print("Tradução cancelada pelo usuário.")
-                            continue
-                        device = torch.device("cpu")
-                    
                     translated_lines = translate_srt(file_path, translator, device)
                     with open(new_file_path, 'w', encoding='utf-8') as new_file:
                         new_file.writelines(translated_lines)
@@ -101,6 +95,7 @@ def main():
                     print(f"Translation completed in {elapsed_time:.2f} seconds")
                 except Exception as e:
                     print(f"Error translating file {file_path}: {e}")
+
 
 if __name__ == "__main__":
     main()

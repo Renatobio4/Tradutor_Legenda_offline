@@ -61,7 +61,7 @@ def main():
         for file_name in files:
             # Verifique se o arquivo corresponde aos critérios
             if (file_name.endswith('.srt') or file_name.endswith('.en.srt') or file_name.endswith('_en.srt')) and \
-            not (file_name.endswith('.pt-br.srt') or file_name.endswith('_pt-br.srt') or file_name.endswith('PT.srt')):
+            not (file_name.endswith('.pt-br.srt') or file_name.endswith('_pt-br.srt') or file_name.endswith('PT.srt') or file_name.endswith('Portuguese.srt')):
                 file_path = os.path.join(root, file_name)
 
             # Substituições específicas para evitar sobreposições
